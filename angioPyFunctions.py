@@ -138,7 +138,7 @@ def skelSplinerWithThickness(skel, EDT, smoothing=50, order=3, decimation=2):
     return tcko
 
 
-def arterySegmentation(slice_ix, pixelArray, groundTruthPoints):
+def arterySegmentation(slice_ix, pixelArray, groundTruthPoints, segmentationModel):
 
         inputImage = pixelArray[slice_ix, :, :]
 
@@ -160,8 +160,6 @@ def arterySegmentation(slice_ix, pixelArray, groundTruthPoints):
         net.to(device=device)
 
         predict.cudnn.benchmark = True
-
-        segmentationModel = "SegmentationModel/modelWeights-FAMEallArteries-inceptionresnetv2-fold1-e40-b10.pth"
 
         net.load_state_dict(predict.torch.load(
             segmentationModel, map_location=device))

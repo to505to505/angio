@@ -24,6 +24,8 @@ st.set_page_config(layout="wide")
 
 outputPath = "Output"
 
+segmentationModelWeights = "SegmentationModel/modelWeights-InternalData-inceptionresnetv2-fold2-e40-b10-a4.pth"
+
 # Make output folder
 os.makedirs(name=outputPath, exist_ok=True)
 
@@ -180,7 +182,7 @@ if selectedDicom is not None:
 
                             
                             # Run segmentation model on the selected from, and the chosen groundtruth points
-                            predictedMask = angioPyFunctions.arterySegmentation(slice_ix=slice_ix, pixelArray=pixelArray, groundTruthPoints = objects[['top', 'left']])
+                            predictedMask = angioPyFunctions.arterySegmentation(slice_ix=slice_ix, pixelArray=pixelArray, groundTruthPoints = objects[['top', 'left']], segmentationModel=segmentationModelWeights)
                             
                             # Save the predicted mask
                             tifffile.imwrite(f"{outputPath}/mask.tif", predictedMask)
