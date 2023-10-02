@@ -142,6 +142,8 @@ def arterySegmentation(slice_ix, pixelArray, groundTruthPoints, segmentationMode
 
         inputImage = pixelArray[slice_ix, :, :]
 
+        inputImage = cv2.resize(inputImage, (512,512))
+
         imageSize = inputImage.shape
 
         # Zip points together into tuples

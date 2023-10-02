@@ -150,6 +150,7 @@ if selectedDicom is not None:
 
 
                     selectedFrame = pixelArray[slice_ix, :, :]
+                    selectedFrame = cv2.resize(selectedFrame, (512,512))
 
 
                     # Create a canvas component
@@ -158,7 +159,7 @@ if selectedDicom is not None:
                         stroke_width=1,
                         stroke_color=arteryDictionary[selectedArtery]['colour'],
                         background_color='black',
-                        background_image= Image.fromarray(pixelArray[slice_ix, :, :]),
+                        background_image= Image.fromarray(selectedFrame),
                         update_streamlit=True,
                         height=512,
                         width=512,
