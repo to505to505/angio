@@ -22,6 +22,21 @@ import cv2
 
 st.set_page_config(layout="wide")
 
+if 'stage' not in st.session_state:
+    st.session_state.stage = 0
+
+# m = st.markdown("""
+# <style>
+# div.stButton > button:first-child {
+#     background-color: #0099ff;
+#     color:#ffffff;
+# }
+# div.stButton > button:hover {
+#     background-color: #00ff00;
+#     color:#ff0000;
+#     }
+# </style>""", unsafe_allow_html=True)
+
 outputPath = "Output"
 
 segmentationModelWeights = "SegmentationModel/modelWeights-InternalData-inceptionresnetv2-fold2-e40-b10-a4.pth"
@@ -49,12 +64,37 @@ def file_selector(folder_path='.'):
 
 def selectSlice(slice_ix, pixelArray, fileName):
 
-    # print(f"Slice {slice_ix} has been chosen")
-
-
+    # Save the selected frame 
     tifffile.imwrite(f"{outputPath}/{fileName}", pixelArray[slice_ix, :, :])
 
-    st.session_state["expander_state"] = False
+    # Set the button as clicked
+    st.session_state.btnSelectSlice = True
+
+
+# def reset():
+
+#     st.session_state.sliceSlider = 1
+
+def set_stage(stage):
+    st.session_state.stage = stage
+
+# def segment():
+    
+#     if annotationCanvas.json_data is not None:
+
+#         objects = pd.json_normalize(annotationCanvas.json_data["objects"]) # need to convert obj to str because PyArrow
+
+#         if len(objects) != 0:
+
+#             for col in objects.select_dtypes(include=['object']).columns:
+#                 objects[col] = objects[col].astype("str")
+
+            
+#             # Run segmentation model on the selected from, and the chosen groundtruth points
+#             predictedMask = angioPyFunctions.arterySegmentation(slice_ix=slice_ix, pixelArray=pixelArray, groundTruthPoints = objects[['top', 'left']], segmentationModel=segmentationModelWeights)
+            
+#             # Save the predicted mask
+#             tifffile.imwrite(f"{outputPath}/mask.tif", predictedMask)
 
 
 
@@ -80,7 +120,7 @@ segmenter = st.expander("", True)
 
 # annotationExpander = st.expander("")
 
-tab1, tab2 = st.tabs(["Segmentation", "Analysis"])
+tab1, tab2, tab3 = st.tabs(["Artery segmentation", "Catheter segmentation", "Analysis"])
 
 # Once a file is uploaded, the following annotation sequence is initiated 
 if selectedDicom is not None:
@@ -104,8 +144,17 @@ if selectedDicom is not None:
                 st.write("Select frame for annotation. Aim for an end-diastolic frame with good visualisation of the artery of interest.")
             
                 slice_ix = st.slider('Slice', 0, n_slices, int(n_slices/2), key='sliceSlider')
+
+                stepOneCol1, stepOneCol2 = st.columns((3,3))
+
+                with stepOneCol1:
+
+                    btnSelectSlice = st.button("Select slice", on_click=selectSlice(slice_ix=slice_ix, pixelArray=pixelArray, fileName="selectedFrame.tif"), use_container_width=True)
                 
-                st.button("Select slice", on_click=selectSlice(slice_ix=slice_ix, pixelArray=pixelArray, fileName="selectedFrame.tif"))
+                with stepOneCol2:
+                    btnReset = st.button("Reset", use_container_width=True)
+
+                
 
 
                 predictedMask = numpy.zeros_like(pixelArray[slice_ix, :, :])
@@ -120,16 +169,27 @@ if selectedDicom is not None:
             #     st.selectbox("Select catheter size", ('4 Fr','5 Fr', '6 Fr'))
             #     st.button("Segment catheter")
 
+            # if st.session_state.btnSelectSlice == True:
+
             with stepTwo:
 
                 selectedArtery = st.selectbox("Select artery for annotation:",
                         ['LAD', 'CX', 'RCA', 'LM', 'OM', 'AM'],
                         key="arteryDropMenu"
                     )
+                
+                stepTwoCol1, stepTwoCol2 = st.columns((3,3))
+
+                with stepTwoCol1:
+
+                    btnSegment = st.button("Segment", on_click=set_stage, args=[1], use_container_width=True)
+                
+                with stepTwoCol2:
+                    btnSave = st.button("Save mask", on_click=selectSlice(slice_ix=slice_ix, pixelArray=pixelArray, fileName="selectedFrame.tif"), use_container_width=True)
             
-                drawing_mode = st.selectbox(
-                    "Mask correction:", ("Erase", "Draw")
-                )
+                # drawing_mode = st.selectbox(
+                #     "Mask correction:", ("Erase", "Draw")
+                # )
 
                 stroke_width = st.slider("Brush/eraser width: ", 1, 25, 3)
                 stroke_color = arteryDictionary[selectedArtery]
@@ -145,13 +205,20 @@ if selectedDicom is not None:
 
                 with col1b:
 
-                    st.markdown(f"<h5 style='text-align: center; color: white;'>Selected frame</h5>", unsafe_allow_html=True)
-                    st.markdown(f"<p style='text-align: center; color: white;'>Beginning with the desired <u><b>start point</b></u> and finishing at the desired <u><b>end point</b></u>, click along the artery aiming for ~10 points</p>", unsafe_allow_html=True)
+                    leftImageText = "<p style='text-align: center; color: white;'>Beginning with the desired <u><b>start point</b></u> and finishing at the desired <u><b>end point</b></u>, click along the artery aiming for ~10 points</p>"
 
+
+                    st.markdown(f"<h5 style='text-align: center; color: white;'>Selected frame</h5>", unsafe_allow_html=True)
+                    # st.markdown(f"{leftImageExplanation}", unsafe_allow_html=True)
+                    
+                    # leftImageTextContainer = st.empty()
+
+                    # with leftImageTextContainer:
+                    st.markdown(leftImageText, unsafe_allow_html=True)
+                    # leftImageTextContainer.text(leftImageText)
 
                     selectedFrame = pixelArray[slice_ix, :, :]
                     selectedFrame = cv2.resize(selectedFrame, (512,512))
-
 
                     # Create a canvas component
                     annotationCanvas = st_canvas(
@@ -170,23 +237,24 @@ if selectedDicom is not None:
 
 
                     # Do something interesting with the image data and paths
-                    if annotationCanvas.json_data is not None:
-                        objects = pd.json_normalize(annotationCanvas.json_data["objects"]) # need to convert obj to str because PyArrow
+                    if st.session_state.stage == 1:
+                        if annotationCanvas.json_data is not None:
+                            objects = pd.json_normalize(annotationCanvas.json_data["objects"]) # need to convert obj to str because PyArrow
 
-                        if len(objects) != 0:
+                            if len(objects) != 0:
 
-                            for col in objects.select_dtypes(include=['object']).columns:
-                                objects[col] = objects[col].astype("str")
+                                for col in objects.select_dtypes(include=['object']).columns:
+                                    objects[col] = objects[col].astype("str")
 
-                                # ys = numpy.array(objects['top'])
-                                # xs = numpy.array(objects['left'])
+                                    # ys = numpy.array(objects['top'])
+                                    # xs = numpy.array(objects['left'])
 
-                            
-                            # Run segmentation model on the selected from, and the chosen groundtruth points
-                            predictedMask = angioPyFunctions.arterySegmentation(slice_ix=slice_ix, pixelArray=pixelArray, groundTruthPoints = objects[['top', 'left']], segmentationModel=segmentationModelWeights)
-                            
-                            # Save the predicted mask
-                            tifffile.imwrite(f"{outputPath}/mask.tif", predictedMask)
+                                
+                                # Run segmentation model on the selected from, and the chosen groundtruth points
+                                predictedMask = angioPyFunctions.arterySegmentation(slice_ix=slice_ix, pixelArray=pixelArray, groundTruthPoints = objects[['top', 'left']], segmentationModel=segmentationModelWeights)
+                                
+                                # Save the predicted mask
+                                tifffile.imwrite(f"{outputPath}/mask.tif", predictedMask)
 
 
         
@@ -201,10 +269,12 @@ if selectedDicom is not None:
 
 
                     # Define correct colour for canvas (erase vs drawing)
-                    if drawing_mode == "Erase":
-                        stroke_color = "rgba(0, 0, 0, 255)"
-                    else:
-                        stroke_color = "rgba(255, 255, 255, 255)"
+                    # if drawing_mode == "Erase":
+                    #     stroke_color = "rgba(0, 0, 0, 255)"
+                    # else:
+                    #     stroke_color = "rgba(255, 255, 255, 255)"
+
+                    stroke_color = "rgba(255, 255, 255, 255)"
 
 
                     maskCanvas = st_canvas(
@@ -248,6 +318,55 @@ if selectedDicom is not None:
                         # combinedMask = combinedMaskRGBA[:,:,3]
                         # tifffile.imwrite(f"{outputPath}/combinedMaskRGB.tif", combinedMask)
 
+                        # with tab2:
+
+                        #     # Create a canvas component
+                        #     catheterAnnotationCanvas = st_canvas(
+                        #         fill_color=arteryDictionary[selectedArtery]['colour'],  # Fixed fill color with some opacity
+                        #         stroke_width=1,
+                        #         stroke_color=arteryDictionary[selectedArtery]['colour'],
+                        #         background_color='black',
+                        #         background_image= Image.fromarray(selectedFrame),
+                        #         update_streamlit=True,
+                        #         height=512,
+                        #         width=512,
+                        #         drawing_mode="point",
+                        #         point_display_radius=2,
+                        #         key="catheterAnnotationCanvas",
+                        #     )
+
+
+                        #     # Do something interesting with the image data and paths
+                        #     if annotationCanvas.json_data is not None:
+                        #         objects = pd.json_normalize(annotationCanvas.json_data["objects"]) # need to convert obj to str because PyArrow
+
+                        #         if len(objects) != 0:
+
+                        #             for col in objects.select_dtypes(include=['object']).columns:
+                        #                 objects[col] = objects[col].astype("str")
+
+                        #                 # ys = numpy.array(objects['top'])
+                        #                 # xs = numpy.array(objects['left'])
+
+                                    
+                        #             # Run segmentation model on the selected from, and the chosen groundtruth points
+                        #             predictedCatheterMask = angioPyFunctions.arterySegmentation(slice_ix=slice_ix, pixelArray=pixelArray, groundTruthPoints = objects[['top', 'left']], segmentationModel=segmentationModelWeights)
+                                    
+                        #             # Save the predicted mask
+                        #             tifffile.imwrite(f"{outputPath}/catheterMask.tif", predictedCatheterMask)
+
+                        with stepThree:
+
+                            selectedArtery = st.selectbox("Select catheter size:", ['Select catheter...', '4Fr', '5Fr', '6Fr'], key="catheterDropMenu")
+
+                            if selectedArtery != 'Select catheter...':
+
+                                #  leftImageExplanation = "sdfsdfdsfdsf"
+
+                                #  test = st.markdown(f"{leftImageExplanation}", unsafe_allow_html=True)
+                                leftImageTextContainer.text("sdfsfdsfsdf")
+
+
 
                         with tab2:
 
@@ -257,7 +376,7 @@ if selectedDicom is not None:
                             tifffile.imwrite(f"{outputPath}/test.tif", combinedMask)
 
 
-                            tab2Col1, tab2Col2, tab3Col3 = st.columns([1,15,1])
+                            tab2Col1, tab2Col2, tab2Col3 = st.columns([1,15,1])
 
                             with tab2Col2:
 
