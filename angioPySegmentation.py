@@ -101,7 +101,7 @@ def set_stage(stage):
 
 # Main text
 st.markdown("<h1 style='text-align: center; color: white;'>AngioPy segmentation</h1>", unsafe_allow_html=True)
-st.markdown("<h5 style='text-align: center; color: white;'> Welcome to <b>angioPy segmentation</b>, an AI-driven, coronary angiography segmentation tool.</h1>", unsafe_allow_html=True)
+st.markdown("<h5 style='text-align: center; color: white;'> Welcome to <b>AngioPy segmentation</b>, an AI-driven, coronary angiography segmentation tool.</h1>", unsafe_allow_html=True)
 st.markdown("")
 
 # Build the sidebar
