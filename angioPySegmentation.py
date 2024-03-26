@@ -20,6 +20,10 @@ import angioPyFunctions
 import scipy
 import cv2
 
+import ssl
+
+ssl._create_default_https_context = ssl._create_unverified_context
+
 st.set_page_config(layout="wide")
 
 if 'stage' not in st.session_state:
@@ -100,8 +104,8 @@ def set_stage(stage):
 
 
 # Main text
-st.markdown("<h1 style='text-align: center; color: white;'>AngioPy segmentation</h1>", unsafe_allow_html=True)
-st.markdown("<h5 style='text-align: center; color: white;'> Welcome to <b>AngioPy segmentation</b>, an AI-driven, coronary angiography segmentation tool.</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>AngioPy segmentation</h1>", unsafe_allow_html=True)
+st.markdown("<h5 style='text-align: center;'> Welcome to <b>AngioPy segmentation</b>, an AI-driven, coronary angiography segmentation tool.</h1>", unsafe_allow_html=True)
 st.markdown("")
 
 # Build the sidebar
