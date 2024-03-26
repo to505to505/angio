@@ -16,6 +16,25 @@ from PIL import Image
 from fil_finder import FilFinder2D
 import astropy.units as u
 from tqdm import tqdm
+import cv2
+
+colourTableHex = {
+                'LAD':       "#f03b20",
+                'D':         "#fd8d3c",
+                'CX':        "#31a354",
+                'OM':        "#74c476",
+                'RCA':       "#08519c",
+                'AM':        "#3182bd",
+                'LM':        "#984ea3",
+                }
+
+colourTableList = {}
+
+for item in colourTableHex.keys():
+    ### WARNING HACK: The colours go in backwards here for some reason perhaps related to RGBA?
+    colourTableList[item] = [int(colourTableHex[item][5:7], 16),
+                             int(colourTableHex[item][3:5], 16),
+                             int(colourTableHex[item][1:3], 16)]
 
 
 def skeletonise(maskArray):
@@ -221,3 +240,15 @@ def arterySegmentation(slice_ix, pixelArray, groundTruthPoints, segmentationMode
         resultsArray = numpy.asarray(result)
 
         return resultsArray
+
+
+
+def maskOutliner(labelledArtery, outlineThickness=3):
+
+    # Compute the boundary of the mask
+    contours, _ = cv2.findContours(labelledArtery, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    tmp = numpy.zeros_like(labelledArtery)
+    boundary = cv2.drawContours(tmp, contours, -1, (255,255,255), outlineThickness)
+    boundary = boundary > 0
+
+    return boundary
