@@ -29,25 +29,13 @@ st.set_page_config(page_title="AngioPy Segmentation", layout="wide")
 if 'stage' not in st.session_state:
     st.session_state.stage = 0
 
-# m = st.markdown("""
-# <style>
-# div.stButton > button:first-child {
-#     background-color: #0099ff;
-#     color:#ffffff;
-# }
-# div.stButton > button:hover {
-#     background-color: #00ff00;
-#     color:#ff0000;
-#     }
-# </style>""", unsafe_allow_html=True)
 
-outputPath = "Output"
+# outputPath = "Output"
 
 segmentationModelWeights = "SegmentationModel/modelWeights-InternalData-inceptionresnetv2-fold2-e40-b10-a4.pth"
-# segmentationModelWeights = "SegmentationModel/modelWeights-FAMEallArteries-inceptionresnetv2-fold1-e40-b10.pth"
 
 # Make output folder
-os.makedirs(name=outputPath, exist_ok=True)
+# os.makedirs(name=outputPath, exist_ok=True)
 
 # arteryDictionary = {
 #     'LAD':       {'colour': "#f03b20"},
@@ -117,8 +105,6 @@ selectedDicom = exampleDicoms[DropDownDicom]
 
 print(DropDownDicom)
 
-# st.sidebar.expander("STEP ONE", expanded =False)
-
 stepOne = st.sidebar.expander("STEP ONE", True)
 stepTwo = st.sidebar.expander("STEP TWO", True)
 
@@ -182,8 +168,6 @@ if selectedDicom is not None:
                 stroke_color = angioPyFunctions.colourTableList[selectedArtery]
 
 
-            # st.markdown(f"<h5 style='text-align: center; color: white;'>Acquisition angle<br>{dcmLabel}</h5>", unsafe_allow_html=True)
-
             col1, col2 = st.columns((15,15))
 
             with col1:
@@ -217,13 +201,7 @@ if selectedDicom is not None:
                     )
 
 
-                    # if annotationCanvas:
-                    #     st.session_state.key += 1
-
-
-
                     # Do something interesting with the image data and paths
-                    # if st.session_state.stage == 0:
                     if annotationCanvas.json_data is not None:
                         objects = pd.json_normalize(annotationCanvas.json_data["objects"]) # need to convert obj to str because PyArrow
 
@@ -232,10 +210,6 @@ if selectedDicom is not None:
                             for col in objects.select_dtypes(include=['object']).columns:
                                 objects[col] = objects[col].astype("str")
 
-                                # ys = numpy.array(objects['top'])
-                                # xs = numpy.array(objects['left'])
-
-                            
                             # Run segmentation model on the selected from, and the chosen groundtruth points
                             predictedMask = angioPyFunctions.arterySegmentation(slice_ix=slice_ix, pixelArray=pixelArray, groundTruthPoints = objects[['top', 'left']], segmentationModel=segmentationModelWeights)
                             
@@ -252,13 +226,6 @@ if selectedDicom is not None:
 
                     st.markdown(f"<h5 style='text-align: center; color: white;'>Predicted mask</h1>", unsafe_allow_html=True)
                     st.markdown(f"<p style='text-align: center; color: white;'>If the predicted mask has errors, restart and select more points to help the segmentation model. </p>", unsafe_allow_html=True)
-
-
-                    # Define correct colour for canvas (erase vs drawing)
-                    # if drawing_mode == "Erase":
-                    #     stroke_color = "rgba(0, 0, 0, 255)"
-                    # else:
-                    #     stroke_color = "rgba(255, 255, 255, 255)"
 
                     stroke_color = "rgba(255, 255, 255, 255)"
 
