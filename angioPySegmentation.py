@@ -162,12 +162,8 @@ if selectedDicom is not None:
                 col1a, col1b, col1c = st.columns((1,10,1))
 
                 with col1b:
-<<<<<<< HEAD
 
                     leftImageText = "<p style='text-align: center; color: white;'>Beginning with the desired <u><b>start point</b></u> and finishing at the desired <u><b>end point</b></u>, click along the artery aiming for ~5-10 points. Segmentation is automatic.</p>"
-=======
-                    leftImageText = "<p style='text-align: center; color: white;'>Beginning with the desired <u><b>start point</b></u> and finishing at the desired <u><b>end point</b></u>, click along the artery aiming for ~5-10 points, then click SEGMENT</p>"
->>>>>>> 215f6fc3aaf783c860c32371bacd848af5df2df7
 
                     st.markdown(f"<h5 style='text-align: center; color: white;'>Selected frame</h5>", unsafe_allow_html=True)
 
