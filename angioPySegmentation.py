@@ -79,7 +79,7 @@ exampleDicoms = {
 
 # Main text
 st.markdown("<h1 style='text-align: center;'>AngioPy Segmentation</h1>", unsafe_allow_html=True)
-st.markdown("<h5 style='text-align: center;'> Welcome to <b>AngioPy segmentation</b>, an AI-driven, coronary angiography segmentation tool.</h1>", unsafe_allow_html=True)
+st.markdown("<h5 style='text-align: center;'> Welcome to <b>AngioPy Segmentation</b>, an AI-driven, coronary angiography segmentation tool.</h1>", unsafe_allow_html=True)
 st.markdown("")
 
 # Build the sidebar
@@ -100,10 +100,6 @@ DropDownDicom = st.sidebar.selectbox("Select example DICOM file:",
                     )
 
 selectedDicom = exampleDicoms[DropDownDicom]
-
-
-
-print(DropDownDicom)
 
 stepOne = st.sidebar.expander("STEP ONE", True)
 stepTwo = st.sidebar.expander("STEP TWO", True)
@@ -140,8 +136,6 @@ if selectedDicom is not None:
 
         n_slices = pixelArray.shape[0]
 
-        print(f"N of slices {n_slices}")
-
         slice_ix = 0
 
         with tab1:
@@ -162,7 +156,7 @@ if selectedDicom is not None:
                         key="arteryDropMenu"
                     )
 
-                st.write("Beginning with the desired start point and finishing at the desired end point, click along the artery aiming for ~5-10 points, then click SEGMENT")
+                st.write("Beginning with the desired start point and finishing at the desired end point, click along the artery aiming for ~5-10 points.")
 
 
                 stroke_color = angioPyFunctions.colourTableList[selectedArtery]
@@ -176,7 +170,7 @@ if selectedDicom is not None:
 
                 with col1b:
 
-                    leftImageText = "<p style='text-align: center; color: white;'>Beginning with the desired <u><b>start point</b></u> and finishing at the desired <u><b>end point</b></u>, click along the artery aiming for ~5-10 points, then click SEGMENT</p>"
+                    leftImageText = "<p style='text-align: center; color: white;'>Beginning with the desired <u><b>start point</b></u> and finishing at the desired <u><b>end point</b></u>, click along the artery aiming for ~5-10 points. Segmentation is automatic.</p>"
 
                     st.markdown(f"<h5 style='text-align: center; color: white;'>Selected frame</h5>", unsafe_allow_html=True)
 
