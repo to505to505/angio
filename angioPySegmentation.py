@@ -125,11 +125,6 @@ st.markdown(css, unsafe_allow_html=True)
 
 # Once a file is uploaded, the following annotation sequence is initiated 
 if selectedDicom is not None:
-
-
-    
-    try:
-        
         dcm = pydicom.dcmread(selectedDicom, force=True)
 
         handAngle = dcm.PositionerPrimaryAngle
@@ -338,6 +333,3 @@ if selectedDicom is not None:
 
 
 
-    except RuntimeError:
-        
-        st.text('This does not look like a DICOM folder!')
