@@ -17,11 +17,7 @@ This uses a pytorch coronary segmentation model (EfficientNetPLusPlus) that has 
 The input is a raw angiogram image, and the output is a segmentation mask of all the arteries. This output will be used as the 'first guess' to speed up artery annotation. 
 '''
 
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-
 def predict_img(net, dataset_class, full_img, device, scale_factor=1, n_classes=3):
-    print(f"predict.predict_img(): {device=}")
     # NOTE n_classes is the number of possible values that can be predicted for a given pixel. In a standard binary segmentation task, this will be 2 i.e. black or white
 
     net.eval()
@@ -29,7 +25,7 @@ def predict_img(net, dataset_class, full_img, device, scale_factor=1, n_classes=
     img = torch.from_numpy(dataset_class.preprocess(full_img, scale_factor))
 
     img = img.unsqueeze(0)
-    # img = img.to(device=device, dtype=torch.float32)
+    img = img.to(device=device, dtype=torch.float32)
 
     with torch.no_grad():
         output = net(img)
