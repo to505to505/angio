@@ -24,7 +24,7 @@ import ssl
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="AngioPy Segmentation", layout="wide")
 
 if 'stage' not in st.session_state:
     st.session_state.stage = 0
@@ -58,15 +58,15 @@ os.makedirs(name=outputPath, exist_ok=True)
 #     'LM':        {'colour' : "#984ea3"},
 # }
 
-def file_selector(folder_path='.'):
-    fileNames = [file for file in glob.glob(f"{folder_path}/*")]
-    selectedDicom = st.sidebar.selectbox('Select a DICOM file:', fileNames)
-    if selectedDicom is None:
-        return None
+# def file_selector(folder_path='.'):
+#     fileNames = [file for file in glob.glob(f"{folder_path}/*")]
+#     selectedDicom = st.sidebar.selectbox('Select a DICOM file:', fileNames)
+#     if selectedDicom is None:
+#         return None
     
-    return selectedDicom
+#     return selectedDicom
 
-
+@st.cache_data
 def selectSlice(slice_ix, pixelArray, fileName):
 
     # Save the selected frame 
@@ -76,54 +76,54 @@ def selectSlice(slice_ix, pixelArray, fileName):
     st.session_state.btnSelectSlice = True
 
 
-# def reset():
+DicomFolder = "Dicoms/"
+exampleDicoms = {
 
-#     st.session_state.sliceSlider = 1
+    'RCA1' : 'Dicoms/RCA1',
+    'RCA2' : 'Dicoms/RCA2',
+    'RCA3' : 'Dicoms/RCA3',
+    'LCA1' : 'Dicoms/LCA1',
+    'LCA2' : 'Dicoms/LCA2',
 
-def set_stage(stage):
-    st.session_state.stage = stage
-
-# def segment():
-    
-#     if annotationCanvas.json_data is not None:
-
-#         objects = pd.json_normalize(annotationCanvas.json_data["objects"]) # need to convert obj to str because PyArrow
-
-#         if len(objects) != 0:
-
-#             for col in objects.select_dtypes(include=['object']).columns:
-#                 objects[col] = objects[col].astype("str")
-
-            
-#             # Run segmentation model on the selected from, and the chosen groundtruth points
-#             predictedMask = angioPyFunctions.arterySegmentation(slice_ix=slice_ix, pixelArray=pixelArray, groundTruthPoints = objects[['top', 'left']], segmentationModel=segmentationModelWeights)
-            
-#             # Save the predicted mask
-#             tifffile.imwrite(f"{outputPath}/mask.tif", predictedMask)
+}
 
 
 
 # Main text
-st.markdown("<h1 style='text-align: center;'>AngioPy segmentation</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>AngioPy Segmentation</h1>", unsafe_allow_html=True)
 st.markdown("<h5 style='text-align: center;'> Welcome to <b>AngioPy segmentation</b>, an AI-driven, coronary angiography segmentation tool.</h1>", unsafe_allow_html=True)
 st.markdown("")
 
 # Build the sidebar
-selectedDicom = st.sidebar.file_uploader("Upload DICOM file:",type=["dcm"], accept_multiple_files=False)
+# Select DICOM file: here eventually we will use the file_uploader widget, but for the demo this is deactivate. Instead we will have a choice of 3 anonymised DICOMs to pick from
+# selectedDicom = st.sidebar.file_uploader("Upload DICOM file:",type=["dcm"], accept_multiple_files=False)
 
-st.sidebar.expander("STEP ONE", expanded =False)
+# def changeSessionState():
+
+#     # value += 1
+
+#     print("CHANGED!")
+
+
+DropDownDicom = st.sidebar.selectbox("Select example DICOM file:",
+                        options = ['RCA1', 'RCA2', 'RCA3', 'LCA1', 'LCA2'],
+                        # on_change=changeSessionState(st.session_state.key),
+                        key="dicomDropDown"
+                    )
+
+selectedDicom = exampleDicoms[DropDownDicom]
+
+
+
+print(DropDownDicom)
+
+# st.sidebar.expander("STEP ONE", expanded =False)
 
 stepOne = st.sidebar.expander("STEP ONE", True)
 stepTwo = st.sidebar.expander("STEP TWO", True)
-stepThree = st.sidebar.expander("STEP THREE", True)
-stepFour = st.sidebar.expander("STEP FOUR", True)
 
-# slicer = st.expander("", True)
-# segmenter = st.expander("", True)
-
-# annotationExpander = st.expander("")
 # Create tabs 
-tab1, tab2 = st.tabs(["Artery segmentation", "Artery analysis"])
+tab1, tab2 = st.tabs(["Segmentation", "Analysis"])
 
 # Increase tab font size
 css = '''
@@ -137,9 +137,11 @@ css = '''
 st.markdown(css, unsafe_allow_html=True)
 
 
-
 # Once a file is uploaded, the following annotation sequence is initiated 
 if selectedDicom is not None:
+
+
+    
     try:
         
         dcm = pydicom.dcmread(selectedDicom, force=True)
@@ -152,6 +154,8 @@ if selectedDicom is not None:
 
         n_slices = pixelArray.shape[0]
 
+        print(f"N of slices {n_slices}")
+
         slice_ix = 0
 
         with tab1:
@@ -159,27 +163,11 @@ if selectedDicom is not None:
             with stepOne:
                 st.write("Select frame for annotation. Aim for an end-diastolic frame with good visualisation of the artery of interest.")
             
-                slice_ix = st.slider('Frame', 0, n_slices, int(n_slices/2), key='sliceSlider')
-
-                # stepOneCol1, stepOneCol2 = st.columns((3,3))
-
-                # with stepOneCol1:
-
-                #     btnSelectSlice = st.button("SAVE FRAME", on_click=selectSlice(slice_ix=slice_ix, pixelArray=pixelArray, fileName=f"{os.path.splitext(selectedDicom.name)[0]}-{slice_ix}.tif"), use_container_width=True)
-                
-                # with stepOneCol2:
-
-                #     btnReset = st.button("RESET", use_container_width=True)
-
+                slice_ix = st.slider('Frame', 0, n_slices-1, int(n_slices/2), key='sliceSlider')
 
 
                 predictedMask = numpy.zeros_like(pixelArray[slice_ix, :, :])
-                # combinedMaskRGBA = cv2.cvtColor(predictedMask, cv2.COLOR_GRAY2RGBA)                
-                # a_channel = numpy.full_like(predictedMask[:,:,0], fill_value=255)
-                # combinedMaskRGBA = cv2.merge((predictedMask, a_channel))
 
-
-            # if st.session_state.btnSelectSlice == True:
 
             with stepTwo:
 
@@ -191,21 +179,6 @@ if selectedDicom is not None:
                 st.write("Beginning with the desired start point and finishing at the desired end point, click along the artery aiming for ~5-10 points, then click SEGMENT")
 
 
-                
-                # stepTwoCol1, stepTwoCol2, stepTwoCol3 = st.columns((1,3,1))
-
-                # with stepTwoCol2:
-
-                #     btnSegment = st.button("SAVE MASK", on_click=tifffile.imwrite(f"{outputPath}/{selectedArtery}.tif", predictedMask), args=[1], use_container_width=True)
-                
-                # with stepTwoCol2:
-                #     btnSave = st.button("SAVE MASK", on_click=selectSlice(slice_ix=slice_ix, pixelArray=pixelArray, fileName="selectedFrame.tif"), use_container_width=True)
-            
-                # drawing_mode = st.selectbox(
-                #     "Mask correction:", ("Erase", "Draw")
-                # )
-
-                # stroke_width = 3
                 stroke_color = angioPyFunctions.colourTableList[selectedArtery]
 
 
@@ -240,8 +213,13 @@ if selectedDicom is not None:
                         width=512,
                         drawing_mode="point",
                         point_display_radius=2,
-                        key="annotationCanvas",
+                        key=st.session_state.dicomDropDown,
                     )
+
+
+                    # if annotationCanvas:
+                    #     st.session_state.key += 1
+
 
 
                     # Do something interesting with the image data and paths
@@ -309,73 +287,6 @@ if selectedDicom is not None:
 
                         predictedMaskRGBA = cv2.merge((predictedMask, a_channel))
 
-                        # Combine the predictedMask with any changes made
-                        # erasedCanvas = numpy.zeros_like(maskCanvas.image_data[:,:,0])
-
-
-                        # for ch in [0,1,2,3]:
-                        #     print(numpy.sum(maskCanvas.image_data[:,:,ch]))
-
-                        # combinedMaskRGBA = numpy.where((maskCanvas.image_data > 0), maskCanvas.image_data, predictedMaskRGBA)
-                        # combinedMaskRGBA = numpy.where((predictedMask > 0), predictedMask, predictedMaskRGBA)
-
-                        
-                        # Save combined mask
-                        # tifffile.imwrite(f"{outputPath}/combinedMaskRGBA.tif", predictedMaskRGBA)
-
-                        # Drop the alpha channel for subsequent processing
-                        # combinedMask = combinedMaskRGBA[:,:,3]
-                        # tifffile.imwrite(f"{outputPath}/combinedMaskRGB.tif", combinedMask)
-
-                        # with tab2:
-
-                        #     # Create a canvas component
-                        #     catheterAnnotationCanvas = st_canvas(
-                        #         fill_color=arteryDictionary[selectedArtery]['colour'],  # Fixed fill color with some opacity
-                        #         stroke_width=1,
-                        #         stroke_color=arteryDictionary[selectedArtery]['colour'],
-                        #         background_color='black',
-                        #         background_image= Image.fromarray(selectedFrame),
-                        #         update_streamlit=True,
-                        #         height=512,
-                        #         width=512,
-                        #         drawing_mode="point",
-                        #         point_display_radius=2,
-                        #         key="catheterAnnotationCanvas",
-                        #     )
-
-
-                        #     # Do something interesting with the image data and paths
-                        #     if annotationCanvas.json_data is not None:
-                        #         objects = pd.json_normalize(annotationCanvas.json_data["objects"]) # need to convert obj to str because PyArrow
-
-                        #         if len(objects) != 0:
-
-                        #             for col in objects.select_dtypes(include=['object']).columns:
-                        #                 objects[col] = objects[col].astype("str")
-
-                        #                 # ys = numpy.array(objects['top'])
-                        #                 # xs = numpy.array(objects['left'])
-
-                                    
-                        #             # Run segmentation model on the selected from, and the chosen groundtruth points
-                        #             predictedCatheterMask = angioPyFunctions.arterySegmentation(slice_ix=slice_ix, pixelArray=pixelArray, groundTruthPoints = objects[['top', 'left']], segmentationModel=segmentationModelWeights)
-                                    
-                        #             # Save the predicted mask
-                        #             tifffile.imwrite(f"{outputPath}/catheterMask.tif", predictedCatheterMask)
-
-                        # with stepThree:
-
-                        #     selectedArtery = st.selectbox("Select catheter size:", ['Select catheter...', '4Fr', '5Fr', '6Fr'], key="catheterDropMenu")
-
-                        #     if selectedArtery != 'Select catheter...':
-
-                        #         #  leftImageExplanation = "sdfsdfdsfdsf"
-
-                        #         #  test = st.markdown(f"{leftImageExplanation}", unsafe_allow_html=True)
-                        #         leftImageTextContainer.text("sdfsfdsfsdf")
-
-
 
                         with tab2:
 
@@ -393,16 +304,12 @@ if selectedDicom is not None:
                                 st.markdown(f"<h5 style='text-align: center; color: white;'><br>Artery profile</h5>", unsafe_allow_html=True)
                                 
                                 # Extract thickness information from mask
-                                # EDT = scipy.ndimage.distance_transform_edt(cv2.cvtColor(maskCanvas.image_data, cv2.COLOR_BGR2GRAY))
                                 EDT = scipy.ndimage.distance_transform_edt(cv2.cvtColor(predictedMaskRGBA, cv2.COLOR_RGBA2GRAY))
 
                                 # Skeletonise, get a list of ordered centreline points, and spline them
                                 skel = angioPyFunctions.skeletonise(predictedMaskRGBA)
                                 tck = angioPyFunctions.skelSplinerWithThickness(skel=skel, EDT=EDT)
                                 
-                                # Save the centreline
-                                # tifffile.imwrite(f"{outputPath}/centreline.tif", skel)
-
                                 # Interogate the spline function over 1000 points
                                 splinePointsY, splinePointsX, splineThicknesses = scipy.interpolate.splev(
                                 numpy.linspace(
@@ -421,37 +328,13 @@ if selectedDicom is not None:
                                 fig.update_xaxes(showline=True, linewidth=2, linecolor='white', showgrid=False,gridcolor='white')
                                 fig.update_yaxes(showline=True, linewidth=2, linecolor='white', gridcolor='white')
                                 
-                                
+                                fig.update_layout(yaxis_range=[0,numpy.max(vesselThicknesses)*1.2])
                                 fig.update_layout(font_color="white",title_font_color="white")
                                 fig.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)','paper_bgcolor': 'rgba(0, 0, 0, 0)'})
                                 
                                 
                                 selected_points = plotly_events(fig)
 
-
-                                # if len(selected_points) > 0:
-
-                                #     index = selected_points[0]['x']
-                                #     x = splinePointsX[index]
-                                #     y = splinePointsY[index]
-                                    
-                                #     # plot = st.plotly_chart(fig, use_container_width=True, sharing="streamlit", theme="streamlit", margin=dict(l=0, r=0, t=0, b=0))
-
-                                #     # fig2, ax = plt.subplots()
-
-                                #     # ax.imshow(pixelArray[slice_ix,:,:])
-                                #     # ax.scatter(x,y)
-
-
-                                #     img = px.imshow(pixelArray[slice_ix,:,:], height=600, width=600, aspect = 'equal', binary_string=True, labels=dict(x="Width (pixels)", y="Height (pixels)", color="Pixel intensity"))
-
-                                #     # img = go.Figure()
-                                #     # img = go.Figure(data=go.Image(pixelArray[slice_ix, :,:]), layout={'height': pixelArray[1], 'width': pixelArray[2]})
-
-                                #     img.add_trace(go.Scatter(x=[x], y=[y], mode='markers'))
-                                #     # img.add_layout_image(dict(source=Image.fromarray(pixelArray[slice_ix, :,:])))
-
-                                #     plot = st.plotly_chart(img, use_container_width=False, sharing="streamlit", theme="streamlit", margin=dict(l=0, r=0, t=0, b=0))
 
                                 
                             with tab2Col2:
@@ -461,7 +344,6 @@ if selectedDicom is not None:
 
                                 selectedFrameRGBA = cv2.cvtColor(selectedFrame, cv2.COLOR_GRAY2RGBA)
 
-                                # imgOverlayRGBA = numpy.zeros_like(predictedMaskRGBA)
                                 contour = angioPyFunctions.maskOutliner(labelledArtery=predictedMaskRGBA[:,:,0], outlineThickness=1)
 
                                 selectedFrameRGBA[contour, :] =    [angioPyFunctions.colourTableList[selectedArtery][2],

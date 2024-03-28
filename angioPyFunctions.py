@@ -1,9 +1,4 @@
 import numpy
-import tifffile
-import glob
-import os
-import sys
-import yaml
 import matplotlib.pyplot as plt
 import cv2
 import scipy.interpolate
@@ -17,6 +12,7 @@ from fil_finder import FilFinder2D
 import astropy.units as u
 from tqdm import tqdm
 import cv2
+import streamlit as st
 
 colourTableHex = {
                 'LAD':       "#f03b20",
@@ -156,7 +152,7 @@ def skelSplinerWithThickness(skel, EDT, smoothing=50, order=3, decimation=2):
 
     return tcko
 
-
+@st.cache_resource 
 def arterySegmentation(slice_ix, pixelArray, groundTruthPoints, segmentationModel):
 
         inputImage = pixelArray[slice_ix, :, :]
