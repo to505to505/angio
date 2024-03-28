@@ -51,7 +51,7 @@ segmentationModelWeights = "SegmentationModel/modelWeights-InternalData-inceptio
 #     selectedDicom = st.sidebar.selectbox('Select a DICOM file:', fileNames)
 #     if selectedDicom is None:
 #         return None
-    
+
 #     return selectedDicom
 
 @st.cache_data
@@ -66,7 +66,6 @@ def selectSlice(slice_ix, pixelArray, fileName):
 
 DicomFolder = "Dicoms/"
 exampleDicoms = {
-
     'RCA1' : 'Dicoms/RCA1',
     'RCA2' : 'Dicoms/RCA2',
     'RCA3' : 'Dicoms/RCA3',
@@ -143,7 +142,7 @@ if selectedDicom is not None:
 
             with stepOne:
                 st.write("Select frame for annotation. Aim for an end-diastolic frame with good visualisation of the artery of interest.")
-            
+
                 slice_ix = st.slider('Frame', 0, n_slices-1, int(n_slices/2), key='sliceSlider')
 
 
@@ -166,11 +165,9 @@ if selectedDicom is not None:
             col1, col2 = st.columns((15,15))
 
             with col1:
-
                 col1a, col1b, col1c = st.columns((1,10,1))
 
                 with col1b:
-
                     leftImageText = "<p style='text-align: center; color: white;'>Beginning with the desired <u><b>start point</b></u> and finishing at the desired <u><b>end point</b></u>, click along the artery aiming for ~5-10 points, then click SEGMENT</p>"
 
                     st.markdown(f"<h5 style='text-align: center; color: white;'>Selected frame</h5>", unsafe_allow_html=True)
@@ -206,24 +203,24 @@ if selectedDicom is not None:
                                 objects[col] = objects[col].astype("str")
 
                             # Run segmentation model on the selected from, and the chosen groundtruth points
-                            predictedMask = angioPyFunctions.arterySegmentation(slice_ix=slice_ix, pixelArray=pixelArray, groundTruthPoints = objects[['top', 'left']], segmentationModel=segmentationModelWeights)
-                            
+                            predictedMask = angioPyFunctions.arterySegmentation(
+                                slice_ix=slice_ix,
+                                pixelArray=pixelArray,
+                                groundTruthPoints = objects[['top', 'left']],
+                                segmentationModel=segmentationModelWeights
+                            )
+
                             # Save the predicted mask
                             # tifffile.imwrite(f"{outputPath}/mask.tif", predictedMask)
 
-
-        
-            with col2:  
-
+            with col2:
                 col2a, col2b, col2c = st.columns((1,10,1))
 
                 with col2b:
-
                     st.markdown(f"<h5 style='text-align: center; color: white;'>Predicted mask</h1>", unsafe_allow_html=True)
                     st.markdown(f"<p style='text-align: center; color: white;'>If the predicted mask has errors, restart and select more points to help the segmentation model. </p>", unsafe_allow_html=True)
 
                     stroke_color = "rgba(255, 255, 255, 255)"
-
 
                     maskCanvas = st_canvas(
                         fill_color=angioPyFunctions.colourTableList[selectedArtery],  # Fixed fill color with some opacity
@@ -242,7 +239,6 @@ if selectedDicom is not None:
 
                     # Check that the mask array is not blank
                     if numpy.sum(predictedMask) > 0 and len(objects)>4:
-
                         # add alpha channel to predict mask in order to merge
                         b_channel, g_channel, r_channel = cv2.split(predictedMask)
                         a_channel = numpy.full_like(predictedMask[:,:,0], fill_value=255)
@@ -251,7 +247,6 @@ if selectedDicom is not None:
 
 
                         with tab2:
-
                             # combinedMask = cv2.cvtColor(predictedMaskRGBA, cv2.COLOR_RGBA2RGB)
 
                             # print(combinedMask.shape)
@@ -262,16 +257,15 @@ if selectedDicom is not None:
                             tab2Col1, tab2Col2 = st.columns([20,10])
 
                             with tab2Col1:
-
                                 st.markdown(f"<h5 style='text-align: center; color: white;'><br>Artery profile</h5>", unsafe_allow_html=True)
-                                
+
                                 # Extract thickness information from mask
                                 EDT = scipy.ndimage.distance_transform_edt(cv2.cvtColor(predictedMaskRGBA, cv2.COLOR_RGBA2GRAY))
 
                                 # Skeletonise, get a list of ordered centreline points, and spline them
                                 skel = angioPyFunctions.skeletonise(predictedMaskRGBA)
                                 tck = angioPyFunctions.skelSplinerWithThickness(skel=skel, EDT=EDT)
-                                
+
                                 # Interogate the spline function over 1000 points
                                 splinePointsY, splinePointsX, splineThicknesses = scipy.interpolate.splev(
                                 numpy.linspace(
@@ -279,9 +273,9 @@ if selectedDicom is not None:
                                     1.0,
                                     1000), 
                                     tck)
-                                
+
                                 clippingLength = 20
-                                
+
                                 vesselThicknesses = splineThicknesses[clippingLength:-clippingLength]*2
 
                                 fig = px.line(x=numpy.arange(1,len(vesselThicknesses)+1),y=vesselThicknesses, labels=dict(x="Centreline point", y="Thickness (pixels)"), width=800)
@@ -289,16 +283,16 @@ if selectedDicom is not None:
                                 fig.update_traces(line_color='rgb(31, 119, 180)', textfont_color="white", line={'width':4})
                                 fig.update_xaxes(showline=True, linewidth=2, linecolor='white', showgrid=False,gridcolor='white')
                                 fig.update_yaxes(showline=True, linewidth=2, linecolor='white', gridcolor='white')
-                                
+
                                 fig.update_layout(yaxis_range=[0,numpy.max(vesselThicknesses)*1.2])
                                 fig.update_layout(font_color="white",title_font_color="white")
                                 fig.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)','paper_bgcolor': 'rgba(0, 0, 0, 0)'})
-                                
-                                
+
+
                                 selected_points = plotly_events(fig)
 
 
-                                
+
                             with tab2Col2:
 
                                 st.markdown(f"<h5 style='text-align: center; color: white;'><br>Contours</h5>", unsafe_allow_html=True)
@@ -312,7 +306,7 @@ if selectedDicom is not None:
                                                                     angioPyFunctions.colourTableList[selectedArtery][1],
                                                                     angioPyFunctions.colourTableList[selectedArtery][0],
                                                                     255]
-                                
+
                                 fig2 = px.imshow(selectedFrameRGBA)
 
 
@@ -325,11 +319,7 @@ if selectedDicom is not None:
                                     showscale=False, 
                                     coloraxis=None, 
                                     colorscale='gray'), selector={'type':'heatmap'})
-                                
+
                                 fig2.add_trace(go.Scatter(x=splinePointsX[clippingLength:-clippingLength], y=splinePointsY[clippingLength:-clippingLength], line=dict(width=1)))
 
                                 st.plotly_chart(fig2, use_container_width=True)
-
-
-
-

@@ -167,16 +167,21 @@ def arterySegmentation(slice_ix, pixelArray, groundTruthPoints, segmentationMode
         n_classes = 2
 
         net = predict.smp.Unet(
-            encoder_name='inceptionresnetv2', encoder_weights="imagenet", in_channels=3, classes=n_classes)
+            encoder_name='inceptionresnetv2',
+            encoder_weights="imagenet",
+            in_channels=3,
+            classes=n_classes
+        )
 
         net = predict.nn.DataParallel(net)
 
-        device = predict.torch.device(
-            'cuda' if predict.torch.cuda.is_available() else 'cpu')
+        device = predict.torch.device('cpu')
+        # device = predict.torch.device(
+            # 'cuda' if predict.torch.cuda.is_available() else 'cpu')
         predict.logging.info(f'Using device {device}')
         net.to(device=device)
 
-        predict.cudnn.benchmark = True
+        # predict.cudnn.benchmark = True
 
         net.load_state_dict(predict.torch.load(
             segmentationModel, map_location=device))
@@ -206,7 +211,6 @@ def arterySegmentation(slice_ix, pixelArray, groundTruthPoints, segmentationMode
 
             imageArray[y-2:y+2, x-2:x+2, -2] = 255 
 
-        
         for point in groundTruthPoints[2:-1]:
             y = int(point[0])
             x = int(point[1])
@@ -219,8 +223,14 @@ def arterySegmentation(slice_ix, pixelArray, groundTruthPoints, segmentationMode
 
         image = Image.fromarray(imageArray.astype(numpy.uint8))
 
-        mask = predict.predict_img(net=net, dataset_class=predict.CoronaryDataset,
-                                full_img=image, scale_factor=1, device=device)
+        mask = predict.predict_img(
+            net=net,
+            dataset_class=predict.CoronaryDataset,
+            full_img=image,
+            scale_factor=1,
+            device=device
+        )
+
         result = predict.CoronaryDataset.mask2image(mask)
         result = result.crop((0, 0, imageSize[0], imageSize[1]))
         resultsArray = numpy.asarray(result)
