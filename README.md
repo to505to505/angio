@@ -5,7 +5,7 @@ Please visit https://imaging.epfl.ch/angiopy-segmentation/ for a live demo of th
 
 ![Example Video](illustation.mp4)
 
-<video width="640" height="480" controls autoplay muted src="illustation.webm" type="video/webm">
+<video width="640" height="480" controls autoplay muted src="https://gitlab.com/epfl-center-for-imaging/angiopy/angiopy-segmentation/-/raw/master/illustration.webm" type="video/webm">
 </video>
 
 ## Description
