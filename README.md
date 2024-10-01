@@ -3,8 +3,9 @@
 ## Online Example
 Please visit https://imaging.epfl.ch/angiopy-segmentation/ for a live demo of this code on some example DICOM images
 
-<video controls autoplay muted src="https://gitlab.com/epfl-center-for-imaging/angiopy/angiopy-segmentation/-/raw/master/illustration.webm" width="640px" height="480px" type="video/webm">
-</video>
+![](illustration.avi)
+![](illustration.mp4)
+![](illustration.webm)
 
 ## Description
 This software allows single arteries to be segmented given a few clicks on a single time frame with a PyTorch 2 Deep Learning model.
