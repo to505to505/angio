@@ -46,7 +46,7 @@ def predict_img(net, dataset_class, full_img, device, scale_factor=1, n_classes=
         )
 
         full_mask = tf(probs.cpu())   
-    
+
     if n_classes > 1:
         return dataset_class.one_hot2mask(full_mask)
     else:

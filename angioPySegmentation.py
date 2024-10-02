@@ -21,6 +21,7 @@ import scipy
 import cv2
 
 import ssl
+import pooch
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
@@ -30,9 +31,11 @@ if 'stage' not in st.session_state:
     st.session_state.stage = 0
 
 
-# outputPath = "Output"
+segmentationModelWeights = pooch.retrieve(
+    url="doi:10.5281/zenodo.13848135/modelWeights-InternalData-inceptionresnetv2-fold2-e40-b10-a4.pth",
+    known_hash="md5:bf893ef57adaf39cfee33b25c7c1d87b",
+)
 
-segmentationModelWeights = "SegmentationModel/modelWeights-InternalData-inceptionresnetv2-fold2-e40-b10-a4.pth"
 
 # Make output folder
 # os.makedirs(name=outputPath, exist_ok=True)
