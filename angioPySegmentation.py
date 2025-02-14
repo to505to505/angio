@@ -125,8 +125,8 @@ st.markdown(css, unsafe_allow_html=True)
 if selectedDicom is not None:
         dcm = pydicom.dcmread(selectedDicom, force=True)
 
-        handAngle = dcm.PositionerPrimaryAngle
-        headAngle = dcm.PositionerSecondaryAngle
+        # handAngle = dcm.PositionerPrimaryAngle
+        # headAngle = dcm.PositionerSecondaryAngle
         # dcmLabel = f"{'LAO' if handAngle > 0 else 'RAO'} {numpy.abs(handAngle):04.1f}° {'CRA' if headAngle > 0 else 'CAU'} {numpy.abs(headAngle):04.1f}°"
 
         pixelArray = dcm.pixel_array
