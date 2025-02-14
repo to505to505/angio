@@ -10,7 +10,7 @@ This software allows single arteries to be segmented given a few clicks on a sin
 
 ## Installing and running
  - Install dependencies: ` pip install -r requirements.txt`
- - Launch Streamlit Web Interface: `streamlit run interface.py --server.fileWatcherType none`
+ - Launch Streamlit Web Interface: `streamlit run angioPySegmentation.py --server.fileWatcherType none`
 
  ...a website should pop up in your browser!
 
