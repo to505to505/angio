@@ -1,5 +1,8 @@
 # AngioPy Segmentation
 
+## AngioPy in the news
+AngioPy segmentation is being used in [this RTS reportage on AI in Cardiology](https://www.rts.ch/play/tv/19h30/video/lia-fait-irruption-en-cardiologie-et-redefinit-le-role-des-medecins?urn=urn:rts:video:15479233) (in French)
+
 ## Online Example
 Please visit https://imaging.epfl.ch/angiopy-segmentation/ for a live demo of this code on some example DICOM images
 
