@@ -1,4 +1,5 @@
 import os
+import os.path
 import matplotlib.pyplot as plt
 import numpy
 import pandas as pd
@@ -68,15 +69,19 @@ def selectSlice(slice_ix, pixelArray, fileName):
 
 
 DicomFolder = "Dicoms/"
-exampleDicoms = {
-    'RCA1' : 'Dicoms/RCA1',
-    'RCA2' : 'Dicoms/RCA2',
-    'RCA3' : 'Dicoms/RCA3',
-    'LCA1' : 'Dicoms/LCA1',
-    'LCA2' : 'Dicoms/LCA2',
-
-}
-
+# exampleDicoms = {
+#     'RCA2' : 'Dicoms/RCA1',
+#     'RCA1' : 'Dicoms/RCA4',
+#     # 'RCA2' : 'Dicoms/RCA2',
+#     # 'RCA3' : 'Dicoms/RCA3',
+#     # 'LCA1' : 'Dicoms/LCA1',
+#     # 'LCA2' : 'Dicoms/LCA2',
+# 
+# }
+exampleDicoms = {}
+files = sorted(glob.glob(DicomFolder+"/*"))
+for file in files:
+    exampleDicoms[os.path.basename(file)] = file
 
 
 # Main text
@@ -96,7 +101,7 @@ st.markdown("")
 
 
 DropDownDicom = st.sidebar.selectbox("Select example DICOM file:",
-                        options = ['RCA1', 'RCA2', 'RCA3', 'LCA1', 'LCA2'],
+                        options = list(exampleDicoms.keys()),
                         # on_change=changeSessionState(st.session_state.key),
                         key="dicomDropDown"
                     )
@@ -120,20 +125,29 @@ css = '''
 
 st.markdown(css, unsafe_allow_html=True)
 
-
+# while True:
 # Once a file is uploaded, the following annotation sequence is initiated 
 if selectedDicom is not None:
-        dcm = pydicom.dcmread(selectedDicom, force=True)
+        try:
+            print(f"Trying to load {selectedDicom}")
+            dcm = pydicom.dcmread(selectedDicom, force=True)
 
-        # handAngle = dcm.PositionerPrimaryAngle
-        # headAngle = dcm.PositionerSecondaryAngle
-        # dcmLabel = f"{'LAO' if handAngle > 0 else 'RAO'} {numpy.abs(handAngle):04.1f}° {'CRA' if headAngle > 0 else 'CAU'} {numpy.abs(headAngle):04.1f}°"
+            # handAngle = dcm.PositionerPrimaryAngle
+            # headAngle = dcm.PositionerSecondaryAngle
+            # dcmLabel = f"{'LAO' if handAngle > 0 else 'RAO'} {numpy.abs(handAngle):04.1f}° {'CRA' if headAngle > 0 else 'CAU'} {numpy.abs(headAngle):04.1f}°"
 
-        pixelArray = dcm.pixel_array
+            pixelArray = dcm.pixel_array
 
-        n_slices = pixelArray.shape[0]
+            # Just take first channel if it's RGB?
+            if len(pixelArray.shape) == 4:
+                pixelArray = pixelArray[:,:,:,0]
 
-        slice_ix = 0
+            n_slices = pixelArray.shape[0]
+
+            slice_ix = 0
+        except:
+            selectedDicom = None
+            # continue
 
         with tab1:
 
