@@ -16,7 +16,6 @@ import tifffile
 from streamlit_plotly_events import plotly_events
 from streamlit_drawable_canvas import st_canvas
 from PIL import Image
-# from streamlit_image_coordinates import streamlit_image_coordinates
 import predict
 import angioPyFunctions
 import scipy
@@ -26,7 +25,6 @@ import pooch
 
 # ----------------- SEPARATE LOGGER SETUP -----------------
 import logging
-
 
 logger = logging.getLogger("AngioPyLogger")
 logger.setLevel(logging.DEBUG)
@@ -55,88 +53,81 @@ segmentationModelWeights = pooch.retrieve(
 logger.debug("Segmentation model weights retrieved.")
 
 def normalize_frame(frame, window_center=None, window_width=None):
-    # Если есть параметры VOI LUT, используем их
     if window_center is not None and window_width is not None:
-        # Преобразуем параметры в список, если они скалярные
         if not isinstance(window_center, (list, tuple)):
             window_center = [window_center]
         if not isinstance(window_width, (list, tuple)):
             window_width = [window_width]
         
-        # Берем первые значения (для простоты)
         wc = window_center[0]
         ww = window_width[0]
         
-        # Применяем оконное преобразование вручную
         frame_min = wc - ww / 2
         frame_max = wc + ww / 2
         frame_normalized = np.clip(frame, frame_min, frame_max)
         frame_normalized = (frame_normalized - frame_min) / (frame_max - frame_min) * 255.0
     else:
-        # Ручная нормализация на основе значений кадра
         if np.max(frame) == np.min(frame):
-            logger.warning("Кадр содержит одинаковые значения, нормализация невозможна")
+            logger.warning("Frame contains identical values; normalization impossible.")
             return np.zeros_like(frame, dtype=np.uint8)
         frame_normalized = (frame - np.min(frame)) / (np.max(frame) - np.min(frame)) * 255.0
     
     return frame_normalized.astype(np.uint8)
 
-
 @st.cache_data
 def selectSlice(slice_ix, pixelArray, fileName):
-    """
-    Caches the action of selecting/saving a frame. 
-    """
     logger.debug(f"selectSlice called with slice_ix={slice_ix}, fileName={fileName}.")
-    
-    # For demo, define an output path if needed. 
-    # Example usage with a static path – replace with the real path in your code
     outputPath = "OutputPath"
     os.makedirs(outputPath, exist_ok=True)
-    
-    # Save the selected frame 
     tifffile.imwrite(f"{outputPath}/{fileName}", pixelArray[slice_ix, :, :])
     logger.info(f"Selected frame {slice_ix} saved as {fileName} in {outputPath}.")
-    
-    # Set a Streamlit button state
     st.session_state.btnSelectSlice = True
     logger.debug("Button state updated to True for btnSelectSlice.")
 
-DicomFolder = "Dicoms/"
-logger.debug(f"DicomFolder set to {DicomFolder}.")
+logger.debug("Creating dictionaries for DICOMs and PNGs.")
 
-exampleDicoms = {
-    'RCA2' : 'Dicoms/1.3.12.2.1107.5.4.5.44033.30000019072205491532800000015.1024.dcm',
-}
-logger.debug("Initialized exampleDicoms dictionary with default entry.")
+### NEW/CHANGED: Directories for each filetype
+DicomFolder = "Dicoms"
+PngFolder   = "Pngs"
 
-files = sorted(glob.glob(DicomFolder + "/*"))
-for file in files:
-    exampleDicoms[os.path.basename(file)] = file
-logger.info(f"Found {len(files)} DICOM files in {DicomFolder} folder.")
+exampleFiles = {}
+### DICOM
+dicomPaths = sorted(glob.glob(os.path.join(DicomFolder, "*.dcm")))
+for path in dicomPaths:
+    exampleFiles[os.path.basename(path)] = path
 
-# Main text
-logger.debug("Writing main title and subtitle to Streamlit.")
+### PNG
+pngPaths = sorted(glob.glob(os.path.join(PngFolder, "*.png")))
+for path in pngPaths:
+    exampleFiles[os.path.basename(path)] = path
+
+if len(exampleFiles) == 0:
+    logger.warning("No DICOM or PNG files found!")
+else:
+    logger.info(f"Found {len(exampleFiles)} files in total (DICOM and PNG).")
+
 st.markdown("<h1 style='text-align: center;'>AngioPy Segmentation</h1>", unsafe_allow_html=True)
-st.markdown("<h5 style='text-align: center;'> Welcome to <b>AngioPy Segmentation</b>, an AI-driven, coronary angiography segmentation tool.</h1>", unsafe_allow_html=True)
+st.markdown(
+    "<h5 style='text-align: center;'> Welcome to <b>AngioPy Segmentation</b>, "
+    "an AI-driven, coronary angiography segmentation tool.</h1>",
+    unsafe_allow_html=True
+)
 st.markdown("")
 
-logger.debug("Creating sidebar selection for DICOMs.")
-DropDownDicom = st.sidebar.selectbox(
-    "Select example DICOM file:",
-    options = list(exampleDicoms.keys()),
-    key="dicomDropDown"
+### The user chooses a file from one combined dictionary
+selectedFile = st.sidebar.selectbox(
+    "Select DICOM or PNG:",
+    options = list(exampleFiles.keys()),
+    key="fileSelectBox"
 )
-selectedDicom = exampleDicoms[DropDownDicom]
-logger.info(f"User selected DICOM: {selectedDicom}")
+filePath = exampleFiles[selectedFile]
+logger.info(f"User selected file: {filePath}")
 
 stepOne = st.sidebar.expander("STEP ONE", True)
 stepTwo = st.sidebar.expander("STEP TWO", True)
 
-logger.debug("Creating main tabs in Streamlit.")
 tab1, tab2 = st.tabs(["Segmentation", "Analysis"])
 
-# Increase tab font size
 css = '''
 <style>
     .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
@@ -146,28 +137,28 @@ css = '''
 '''
 st.markdown(css, unsafe_allow_html=True)
 
+pixelArray = None
+slice_ix = 0
+n_slices = 1  # Default
 
-# Once a file is uploaded (or selected), proceed
-if selectedDicom is not None:
+### Detect if user selected .dcm or .png
+ext = os.path.splitext(filePath)[1].lower()
+
+if ext == ".dcm":
+    # ---- Handle DICOM ----
     try:
-        logger.info(f"Attempting to load DICOM: {selectedDicom}")
-        dcm = pydicom.dcmread(selectedDicom, force=True)
+        logger.info(f"Attempting to load DICOM: {filePath}")
+        dcm = pydicom.dcmread(filePath, force=True)
         pixelArray = dcm.pixel_array
         logger.debug(f"Pixel array loaded with shape: {pixelArray.shape}")
 
-        # If it's a 4D array (some DICOMs are), reduce to single channel
         if len(pixelArray.shape) == 4:
             logger.debug("Detected a 4D pixel array. Taking first channel.")
             pixelArray = pixelArray[:, :, :, 0]
 
         n_slices = pixelArray.shape[0]
-        slice_ix = 0
         logger.info(f"Number of frames (n_slices): {n_slices}")
 
-
-
-
-        # ЗАКОММЕНТИТЬ ПОТОМ
         if 'WindowCenter' in dcm and 'WindowWidth' in dcm:
             window_center = dcm.WindowCenter
             window_width = dcm.WindowWidth
@@ -175,43 +166,66 @@ if selectedDicom is not None:
         else:
             window_center = None
             window_width = None
-            logger.warning("WindowCenter и WindowWidth не найдены в метаданных DICOM.")
-        # ЗАКОММЕНТИТЬ ПОТОМ
-
-
-
-
 
     except Exception as e:
-        logger.error(f"Error reading DICOM file {selectedDicom}: {e}")
-        selectedDicom = None
+        logger.error(f"Error reading DICOM file {filePath}: {e}")
+        pixelArray = None
+        n_slices = 0
+else:
+    # ---- Handle PNG ----
+    logger.info(f"Attempting to load PNG: {filePath}")
+    try:
+        pngImage = Image.open(filePath).convert("L")  # Force grayscale
+        pngArray = np.array(pngImage)
+        # We treat it as [slice, height, width] with slice=1
+        pixelArray = np.expand_dims(pngArray, axis=0)
+        n_slices = 1
 
+        # For PNG, no windowing
+        window_center = None
+        window_width = None
+        logger.debug(f"PNG array shape: {pixelArray.shape}")
+    except Exception as e:
+        logger.error(f"Error reading PNG file {filePath}: {e}")
+        pixelArray = None
+        n_slices = 0
+
+if pixelArray is not None and n_slices > 0:
     with tab1:
         with stepOne:
-            st.write("Select frame for annotation. Aim for an end-diastolic frame with good visualisation of the artery of interest.")
-            logger.debug("Creating slider to select frame.")
-            slice_ix = st.slider('Frame', 0, n_slices - 1, int(n_slices / 2), key='sliceSlider')
+            st.write(
+                "Select frame for annotation. "
+                "Aim for an end-diastolic frame with good visualisation of the artery of interest."
+            )
+            # If there's more than 1 slice, show slider. For PNG, n_slices=1, so slider is trivial
+            if n_slices > 1:
+                slice_ix = st.slider(
+                    'Frame',
+                    0, n_slices - 1,
+                    int(n_slices / 2) if n_slices > 1 else 0,
+                    key='sliceSlider'
+                )
+            else: 
+                slice_ix = 0
             logger.info(f"User selected slice index {slice_ix}.")
-
             predictedMask = numpy.zeros_like(pixelArray[slice_ix, :, :])
-            logger.debug("Initialized predictedMask array with zeros.")
 
         with stepTwo:
-            logger.debug("User selects artery for annotation.")
             selectedArtery = st.selectbox(
                 "Select artery for annotation:",
                 ['LAD', 'CX', 'RCA', 'LM', 'OM', 'AM', 'D'],
                 key="arteryDropMenu"
             )
             logger.info(f"Artery selected: {selectedArtery}.")
-            st.write("Beginning with the desired start point and finishing at the desired end point, click along the artery aiming for ~5-10 points.")
+            st.write(
+                "Beginning with the desired start point and finishing at the desired end point, "
+                "click along the artery aiming for ~5-10 points."
+            )
 
             stroke_color = angioPyFunctions.colourTableList[selectedArtery]
-            logger.debug(f"Setting stroke_color to {stroke_color} for the selected artery.")
+            logger.debug(f"Using stroke_color {stroke_color} for the selected artery.")
 
-        # Layout columns for original frame + predicted mask
         col1, col2 = st.columns((15, 15))
-
         with col1:
             col1a, col1b, col1c = st.columns((1, 10, 1))
             with col1b:
@@ -226,16 +240,12 @@ if selectedDicom is not None:
                 st.markdown(leftImageText, unsafe_allow_html=True)
 
                 selectedFrame = pixelArray[slice_ix, :, :]
-                logger.debug("Resizing selected frame to 512x512 for canvas.")
+                # Resize to 512x512 for the canvas
                 selectedFrame = cv2.resize(selectedFrame, (512, 512))
-
                 selectedFrame = normalize_frame(selectedFrame, window_center, window_width)
-   
-                
 
-                # Create a canvas component
                 annotationCanvas = st_canvas(
-                    fill_color="red",  # Fixed fill color with some opacity
+                    fill_color="red",
                     stroke_width=1,
                     stroke_color="red",
                     background_color='black',
@@ -245,11 +255,10 @@ if selectedDicom is not None:
                     width=512,
                     drawing_mode="point",
                     point_display_radius=2,
-                    key=st.session_state.dicomDropDown,
+                    key=str(st.session_state.fileSelectBox)+"annotation",
                 )
                 logger.debug("Canvas for annotation created.")
 
-                # Check for annotation data on the canvas
                 if annotationCanvas.json_data is not None:
                     objects = pd.json_normalize(annotationCanvas.json_data["objects"])
                     if len(objects) != 0:
@@ -281,7 +290,7 @@ if selectedDicom is not None:
 
                 stroke_color = "rgba(255, 255, 255, 255)"
                 maskCanvas = st_canvas(
-                    fill_color=angioPyFunctions.colourTableList[selectedArtery],  # Fixed fill color with some opacity
+                    fill_color=angioPyFunctions.colourTableList[selectedArtery],
                     stroke_width=0,
                     stroke_color=stroke_color,
                     background_color='black',
@@ -291,11 +300,10 @@ if selectedDicom is not None:
                     width=512,
                     drawing_mode="freedraw",
                     point_display_radius=3,
-                    key="maskCanvas",
+                    key=str(st.session_state.fileSelectBox)+"mask",
                 )
                 logger.debug("Canvas for predicted mask displayed.")
 
-                # If the mask is non-empty and there are enough annotated points:
                 if np.sum(predictedMask) > 0 and 'objects' in locals() and len(objects) > 4:
                     logger.info("Predicted mask is non-empty and sufficient points were annotated.")
                     b_channel, g_channel, r_channel = cv2.split(predictedMask)
@@ -305,11 +313,11 @@ if selectedDicom is not None:
 
                     with tab2:
                         tab2Col1, tab2Col2 = st.columns([20, 10])
-
                         with tab2Col1:
                             st.markdown("<h5 style='text-align: center; color: white;'><br>Artery profile</h5>", unsafe_allow_html=True)
-                            # Distance transform
-                            EDT = scipy.ndimage.distance_transform_edt(cv2.cvtColor(predictedMaskRGBA, cv2.COLOR_RGBA2GRAY))
+                            EDT = scipy.ndimage.distance_transform_edt(
+                                cv2.cvtColor(predictedMaskRGBA, cv2.COLOR_RGBA2GRAY)
+                            )
                             logger.debug("Computed distance transform EDT of predicted mask.")
 
                             skel = angioPyFunctions.skeletonise(predictedMaskRGBA)
@@ -322,7 +330,6 @@ if selectedDicom is not None:
                             )
                             logger.debug("Spline evaluated at 1000 points.")
 
-                            # Clip a bit off the ends
                             clippingLength = 20
                             vesselThicknesses = splineThicknesses[clippingLength:-clippingLength] * 2
 
@@ -332,8 +339,8 @@ if selectedDicom is not None:
                                 labels=dict(x="Centreline point", y="Thickness (pixels)"),
                                 width=800
                             )
-                            fig.update_traces(line_color='rgb(31, 119, 180)', textfont_color="white", line={'width': 4})
-                            fig.update_xaxes(showline=True, linewidth=2, linecolor='white', showgrid=False, gridcolor='white')
+                            fig.update_traces(line_color='rgb(31, 119, 180)', line={'width': 4})
+                            fig.update_xaxes(showline=True, linewidth=2, linecolor='white', showgrid=False)
                             fig.update_yaxes(showline=True, linewidth=2, linecolor='white', gridcolor='white')
                             fig.update_layout(yaxis_range=[0, np.max(vesselThicknesses) * 1.2])
                             fig.update_layout(font_color="white", title_font_color="white")
@@ -349,7 +356,6 @@ if selectedDicom is not None:
                             st.markdown("<h5 style='text-align: center; color: white;'><br>Contours</h5>", unsafe_allow_html=True)
                             selectedFrameRGBA = cv2.cvtColor(selectedFrame, cv2.COLOR_GRAY2RGBA)
 
-                            # Outline the artery
                             contour = angioPyFunctions.maskOutliner(
                                 labelledArtery=predictedMaskRGBA[:, :, 0],
                                 outlineThickness=1
@@ -364,7 +370,5 @@ if selectedDicom is not None:
                             fig2 = px.imshow(selectedFrameRGBA)
                             fig2.update_xaxes(visible=False)
                             fig2.update_yaxes(visible=False)
-                            fig2.update_layout(
-                                margin={"t": 0, "b": 0, "r": 0, "l": 0, "pad": 0}
-                            )
+                            fig2.update_layout(margin={"t": 0, "b": 0, "r": 0, "l": 0, "pad": 0})
                             fig2
